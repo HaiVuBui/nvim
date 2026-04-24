@@ -36,3 +36,43 @@ vim.keymap.set("n", "<localleader>c", insert_next_footnote_with_def, {
   buffer = true,
   desc = "Insert next footnote cite + definition",
 })
+
+local function paste_image_from_clipboard()
+  -- Get image from wl-clipboard
+  local handle = io.popen("wl-paste --type image/png 2>/dev/null | wc -c")
+  local size = tonumber(handle:read("*a"))
+  handle:close()
+
+  if not size or size == 0 then
+    vim.notify("No image found in clipboard", vim.log.levels.WARN)
+    return
+  end
+
+  -- Create assets directory if it doesn't exist
+  local cwd = vim.fn.getcwd()
+  local assets_dir = cwd .. "/assets"
+  vim.fn.mkdir(assets_dir, "p")
+
+  -- Generate unique filename with human-readable timestamp
+  local timestamp = os.date("%Y_%m_%d_%H_%M_%S")
+  local filename = "image_" .. timestamp .. ".png"
+  local filepath = assets_dir .. "/" .. filename
+
+  -- Save image from clipboard
+  local cmd = string.format("wl-paste --type image/png > %s", vim.fn.shellescape(filepath))
+  local result = os.execute(cmd)
+
+  if result == 0 then
+    -- Insert markdown link at cursor
+    local image_ref = string.format("![](./assets/%s)", filename)
+    insert_text_at_cursor(image_ref)
+    vim.notify("Image saved to ./assets/" .. filename, vim.log.levels.INFO)
+  else
+    vim.notify("Failed to save image from clipboard", vim.log.levels.ERROR)
+  end
+end
+
+vim.keymap.set("n", "<C-A-v>", paste_image_from_clipboard, {
+  buffer = true,
+  desc = "Paste image from clipboard to ./assets and insert markdown link",
+})
