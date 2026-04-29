@@ -1,3 +1,6 @@
+vim.opt_local.conceallevel = 0
+vim.opt_local.concealcursor = ""
+
 local function next_footnote_id(bufnr)
   bufnr = bufnr or 0
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
