@@ -75,7 +75,71 @@ local function paste_image_from_clipboard()
   end
 end
 
-vim.keymap.set("n", "<C-A-v>", paste_image_from_clipboard, {
+local function paste_video_from_screenrecords()
+  local screenrecords_dir = vim.fn.expand("~/Pictures/screenrecords")
+  local handle = io.popen(string.format("ls -t %s/*.mp4 2>/dev/null | head -1", vim.fn.shellescape(screenrecords_dir)))
+  local latest = handle:read("*a"):gsub("%s+$", "")
+  handle:close()
+
+  if latest == "" then
+    vim.notify("No mp4 files found in ~/Pictures/screenrecords", vim.log.levels.WARN)
+    return
+  end
+
+  local cwd = vim.fn.getcwd()
+  local assets_dir = cwd .. "/assets"
+  vim.fn.mkdir(assets_dir, "p")
+
+  local timestamp = os.date("%Y_%m_%d_%H_%M_%S")
+  local filename = timestamp .. ".mp4"
+  local dest = assets_dir .. "/" .. filename
+
+  local ok = os.execute(string.format("cp %s %s", vim.fn.shellescape(latest), vim.fn.shellescape(dest)))
+  if ok ~= 0 then
+    vim.notify("Failed to copy video to ./assets/", vim.log.levels.ERROR)
+    return
+  end
+
+  local video_ref = string.format("[%s](./assets/%s)", filename, filename)
+  insert_text_at_cursor(video_ref)
+  vim.notify("Video linked: ./assets/" .. filename, vim.log.levels.INFO)
+end
+
+local function paste_media_picker()
+  local pickers = require("telescope.pickers")
+  local finders = require("telescope.finders")
+  local conf = require("telescope.config").values
+  local actions = require("telescope.actions")
+  local action_state = require("telescope.actions.state")
+
+  local items = {
+    { label = "Paste Image  (from clipboard)", action = paste_image_from_clipboard },
+    { label = "Paste Video  (latest screenrecord)", action = paste_video_from_screenrecords },
+  }
+
+  pickers.new({
+    layout_strategy = "cursor",
+    layout_config = { width = 50, height = 6 },
+  }, {
+    prompt_title = "Paste Media",
+    finder = finders.new_table({
+      results = items,
+      entry_maker = function(item)
+        return { value = item, display = item.label, ordinal = item.label }
+      end,
+    }),
+    sorter = conf.generic_sorter({}),
+    attach_mappings = function(buf, _)
+      actions.select_default:replace(function()
+        actions.close(buf)
+        action_state.get_selected_entry().value.action()
+      end)
+      return true
+    end,
+  }):find()
+end
+
+vim.keymap.set("n", "<C-A-v>", paste_media_picker, {
   buffer = true,
-  desc = "Paste image from clipboard to ./assets and insert markdown link",
+  desc = "Paste image or video (telescope picker)",
 })
