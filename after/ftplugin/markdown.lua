@@ -143,3 +143,59 @@ vim.keymap.set("n", "<C-A-v>", paste_media_picker, {
   buffer = true,
   desc = "Paste image or video (telescope picker)",
 })
+
+local function path_under_cursor()
+  local line = vim.api.nvim_get_current_line()
+  local col = vim.api.nvim_win_get_cursor(0)[2] + 1
+  local i = 1
+  while true do
+    local s, e, path = line:find("%]%(([^)]+)%)", i)
+    if not s then break end
+    if col >= s and col <= e then return path end
+    i = e + 1
+  end
+  local cfile = vim.fn.expand("<cfile>")
+  return cfile ~= "" and cfile or nil
+end
+
+vim.keymap.set("n", "gY", function()
+  local path = path_under_cursor()
+  if not path then
+    vim.notify("No path under cursor", vim.log.levels.WARN)
+    return
+  end
+  if path:match("^%w+://") then
+    vim.fn.setreg("+", path)
+    vim.notify("Copied URL: " .. path)
+    return
+  end
+  local expanded = vim.fn.expand(path)
+  local abs
+  if expanded:sub(1, 1) == "/" then
+    abs = expanded
+  else
+    abs = vim.fn.fnamemodify(vim.fn.expand("%:p:h") .. "/" .. expanded, ":p")
+  end
+  vim.fn.setreg("+", abs)
+  vim.notify("Copied: " .. abs)
+end, { buffer = true, desc = "Copy absolute path of link/file under cursor" })
+
+vim.keymap.set("n", "gx", function()
+  local path = path_under_cursor()
+  if not path then
+    vim.notify("No link under cursor", vim.log.levels.WARN)
+    return
+  end
+  local target
+  if path:match("^%w+://") or path:match("^mailto:") then
+    target = path
+  else
+    local expanded = vim.fn.expand(path)
+    if expanded:sub(1, 1) == "/" then
+      target = expanded
+    else
+      target = vim.fn.fnamemodify(vim.fn.expand("%:p:h") .. "/" .. expanded, ":p")
+    end
+  end
+  vim.ui.open(target)
+end, { buffer = true, desc = "Open link/file under cursor" })
