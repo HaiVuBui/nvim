@@ -100,7 +100,7 @@ local function paste_video_from_screenrecords()
     return
   end
 
-  local video_ref = string.format("[%s](./assets/%s)", filename, filename)
+  local video_ref = string.format('<video src="./assets/%s" controls></video>', filename)
   insert_text_at_cursor(video_ref)
   vim.notify("Video linked: ./assets/" .. filename, vim.log.levels.INFO)
 end
