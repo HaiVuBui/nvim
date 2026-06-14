@@ -4,7 +4,7 @@ vim.opt_local.concealcursor = ""
 local function next_footnote_id(bufnr)
   bufnr = bufnr or 0
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-  local max_id = 0
+  local max_id = -1
 
   for _, line in ipairs(lines) do
     for id in line:gmatch("%[%^(%d+)%]") do
@@ -27,12 +27,25 @@ local function insert_text_at_cursor(text)
 end
 
 local function insert_next_footnote_with_def()
-  local id = next_footnote_id(0)
-  local footnote = ("[^%d]: "):format(id)
-  local last_line = vim.api.nvim_buf_line_count(0)
-  insert_text_at_cursor(("[^%d]"):format(id))
-  vim.api.nvim_buf_set_lines(0, -1, -1, false, { footnote })
-  vim.api.nvim_win_set_cursor(0, { last_line + 1, #footnote })
+  local default_id = next_footnote_id(0)
+  vim.ui.input({ prompt = ("Footnote index [%d]: "):format(default_id) }, function(input)
+    if input == nil then return end
+    local id
+    if input == "" then
+      id = default_id
+    else
+      id = tonumber(input)
+      if not id then
+        vim.notify("Invalid index", vim.log.levels.WARN)
+        return
+      end
+    end
+    local footnote = ("[^%d]: "):format(id)
+    local last_line = vim.api.nvim_buf_line_count(0)
+    insert_text_at_cursor(("[^%d]"):format(id))
+    vim.api.nvim_buf_set_lines(0, -1, -1, false, { footnote })
+    vim.api.nvim_win_set_cursor(0, { last_line + 1, #footnote })
+  end)
 end
 
 vim.keymap.set("n", "<localleader>c", insert_next_footnote_with_def, {
