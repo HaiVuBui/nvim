@@ -1,7 +1,7 @@
 local function cursor_location()
   local pos = vim.api.nvim_win_get_cursor(0)
   local line = pos[1] - 1
-  local col = pos[2]
+  local col = pos[2] + 1
 
   return {
     uri = vim.uri_from_bufnr(0),
